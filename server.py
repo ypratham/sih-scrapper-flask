@@ -23,7 +23,7 @@ def scrape_website():
     table = soup.find('table', id='dataTablePS')
     rows = table.find('tbody').find_all('tr')
 
-    ps_data = {}
+    ps_data = {"Hardware": {}, "Software": {}}
     for row in rows:
         try:
             cells = [td for td in row.find_all('td', recursive=False)]
@@ -34,30 +34,64 @@ def scrape_website():
                 ps_category = cells[3].text.strip()
                 ps_number = cells[4].text.strip()
                 ideas_count = int(cells[5].text.strip())
-                ps_data[ps_number] = ideas_count
+                ps_data[ps_category][ps_number] = ideas_count
         except Exception as e:
             print(f"Error processing row: {e}")
 
     return ps_data
 
 
-@app.route('/dashboard')
+@app.route('/')
 def dashboard():
     ps_data = scrape_website()
-    total_submissions = sum(ps_data.values())
-    average_submissions = statistics.mean(ps_data.values()) if ps_data else 0
-    median_submissions = statistics.median(ps_data.values()) if ps_data else 0
-    max_submissions = max(ps_data.values()) if ps_data else 0
-    min_submissions = min(ps_data.values()) if ps_data else 0
+    total_submissions = sum(sum(category.values())
+                            for category in ps_data.values())
+    average_submissions = statistics.mean(
+        sum(category.values()) for category in ps_data.values()) if ps_data else 0
+    median_submissions = statistics.median(
+        sum(category.values()) for category in ps_data.values()) if ps_data else 0
+    max_submissions = max(sum(category.values())
+                          for category in ps_data.values()) if ps_data else 0
+    min_submissions = min(sum(category.values())
+                          for category in ps_data.values()) if ps_data else 0
 
     # Calculate distribution of submissions
     ranges = [0, 10, 50, 100, 500, float('inf')]
     distribution = [0] * (len(ranges) - 1)
-    for count in ps_data.values():
-        for i, (lower, upper) in enumerate(zip(ranges, ranges[1:])):
-            if lower <= count < upper:
-                distribution[i] += 1
-                break
+    for category in ps_data.values():
+        for count in category.values():
+            for i, (lower, upper) in enumerate(zip(ranges, ranges[1:])):
+                if lower <= count < upper:
+                    distribution[i] += 1
+                    break
+
+    # Category-specific analytics
+    hardware_submissions = sum(ps_data['Hardware'].values())
+    software_submissions = sum(ps_data['Software'].values())
+
+    # Calculate averages for each category
+    hardware_average = statistics.mean(
+        ps_data['Hardware'].values()) if ps_data['Hardware'] else 0
+    software_average = statistics.mean(
+        ps_data['Software'].values()) if ps_data['Software'] else 0
+
+    # Calculate medians for each category
+    hardware_median = statistics.median(
+        ps_data['Hardware'].values()) if ps_data['Hardware'] else 0
+    software_median = statistics.median(
+        ps_data['Software'].values()) if ps_data['Software'] else 0
+
+    # Calculate maximums for each category
+    hardware_max = max(ps_data['Hardware'].values()
+                       ) if ps_data['Hardware'] else 0
+    software_max = max(ps_data['Software'].values()
+                       ) if ps_data['Software'] else 0
+
+    # Calculate minimums for each category
+    hardware_min = min(ps_data['Hardware'].values()
+                       ) if ps_data['Hardware'] else 0
+    software_min = min(ps_data['Software'].values()
+                       ) if ps_data['Software'] else 0
 
     return render_template('dashboardBackup.html',
                            ps_data=ps_data,
@@ -66,5 +100,21 @@ def dashboard():
                            median_submissions=median_submissions,
                            max_submissions=max_submissions,
                            min_submissions=min_submissions,
-                           problem_statement_count=len(ps_data),
-                           distribution=distribution)
+                           problem_statement_count=len(
+                               ps_data['Hardware']) + len(ps_data['Software']),
+                           distribution=distribution,
+                           hardware_submissions=hardware_submissions,
+                           software_submissions=software_submissions,
+                           hardware_average=round(hardware_average, 2),
+                           software_average=round(software_average, 2),
+                           hardware_median=hardware_median,
+                           software_median=software_median,
+                           hardware_max=hardware_max,
+                           software_max=software_max,
+                           hardware_min=hardware_min,
+                           software_min=software_min
+                           )
+
+
+if __name__ == '__main__':
+    app.run(debug=True)

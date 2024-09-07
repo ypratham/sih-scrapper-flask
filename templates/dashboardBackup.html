@@ -13,7 +13,7 @@
 
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8">Problem Statement Dashboard</h1>
+        <h1 class="text-3xl font-bold mb-8">SIH 2024 Analytics</h1>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <div class="bg-white p-6 rounded-lg shadow">
@@ -21,24 +21,24 @@
                 <p class="text-3xl font-bold text-blue-600">{{ total_submissions }}</p>
             </div>
             <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-2">Average Submissions</h2>
-                <p class="text-3xl font-bold text-green-600">{{ average_submissions }}</p>
+                <h2 class="text-xl font-semibold mb-2">Average Software Submissions</h2>
+                <p class="text-3xl font-bold text-green-600">{{ software_average }}</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-2">Average Hardware Submissions</h2>
+                <p class="text-3xl font-bold text-yellow-600">{{ hardware_average }}</p>
             </div>
             <div class="bg-white p-6 rounded-lg shadow">
                 <h2 class="text-xl font-semibold mb-2">Total Problem Statements</h2>
                 <p class="text-3xl font-bold text-purple-600">{{ problem_statement_count }}</p>
             </div>
             <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-2">Median Submissions</h2>
-                <p class="text-3xl font-bold text-yellow-600">{{ median_submissions }}</p>
+                <h2 class="text-xl font-semibold mb-2">Software Max Submissions</h2>
+                <p class="text-3xl font-bold text-red-600">{{ software_max }}</p>
             </div>
             <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-2">Max Submissions</h2>
-                <p class="text-3xl font-bold text-red-600">{{ max_submissions }}</p>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-2">Min Submissions</h2>
-                <p class="text-3xl font-bold text-indigo-600">{{ min_submissions }}</p>
+                <h2 class="text-xl font-semibold mb-2">Hardware Max Submissions</h2>
+                <p class="text-3xl font-bold text-indigo-600">{{ hardware_max }}</p>
             </div>
         </div>
 
@@ -70,38 +70,31 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div class="bg-white p-6 rounded-lg shadow">
+        <div class="flex bg-white shadow items-center justify-center gap-8 mb-8">
+            <div class="  p-6  rounded-lg h-[40vh] ">
                 <h2 class="text-xl font-semibold mb-4">Submission Categories</h2>
                 <canvas id="categoryPieChart"></canvas>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Submission Trend</h2>
-                <canvas id="trendLineChart"></canvas>
-            </div>
-        </div>
 
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h2 class="text-xl font-semibold mb-4">Latest Problem Statements</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full table-auto">
-                    <thead>
-                        <tr class="bg-gray-200">
-                            <th class="px-4 py-2">PS Number</th>
-                            <th class="px-4 py-2">Submissions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="latestPSTable">
-                        <!-- Table rows will be populated by JavaScript -->
-                    </tbody>
-                </table>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Hardware Problem Statements</h2>
+                <canvas id="hardwareBarChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Software Problem Statements</h2>
+                <canvas id="softwareBarChart"></canvas>
             </div>
         </div>
     </div>
 
     <script>
         const psData = {{ ps_data | tojson }};
-
+        const hardwareData = Object.entries(psData.Hardware).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        const softwareData = Object.entries(psData.Software).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        console.log(softwareData);
+        // Search Functionality (same as before)
         function searchPS() {
             const searchInput = document.getElementById('psSearch').value.trim().toUpperCase();
             const searchResult = document.getElementById('searchResult');
@@ -110,16 +103,35 @@
             const psRank = document.getElementById('psRank');
             const psPercentile = document.getElementById('psPercentile');
 
-            if (psData.hasOwnProperty(searchInput)) {
-                const count = psData[searchInput];
-                const sortedCounts = Object.values(psData).sort((a, b) => b - a);
-                const rank = sortedCounts.indexOf(count) + 1;
-                const percentile = ((Object.keys(psData).length - rank) / Object.keys(psData).length * 100).toFixed(2);
+            let found = false;
+            let category = '';
+            let count = 0;
+
+            // Search in both "Hardware" and "Software" categories
+            for (const psCategory in psData) {
+                if (psData[psCategory].hasOwnProperty(searchInput)) {
+                    count = psData[psCategory][searchInput];
+                    category = psCategory;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) {
+                // Flatten the counts across both categories to rank correctly
+                let allCounts = [];
+                for (const category in psData) {
+                    allCounts = allCounts.concat(Object.values(psData[category]));
+                }
+                allCounts.sort((a, b) => b - a);
+
+                const rank = allCounts.indexOf(count) + 1;
+                const percentile = ((allCounts.length - rank) / allCounts.length * 100).toFixed(2);
 
                 searchResult.classList.remove('hidden');
-                psNumber.textContent = `Problem Statement: ${searchInput}`;
+                psNumber.textContent = `Problem Statement: ${searchInput} (${category})`;
                 psCount.textContent = `Submissions: ${count}`;
-                psRank.textContent = `Rank: ${rank} out of ${Object.keys(psData).length}`;
+                psRank.textContent = `Rank: ${rank} out of ${allCounts.length}`;
                 psPercentile.textContent = `Percentile: ${percentile}%`;
             } else {
                 searchResult.classList.remove('hidden');
@@ -129,6 +141,7 @@
                 psPercentile.textContent = '';
             }
         }
+
 
         // Distribution Chart
         new Chart(document.getElementById('distributionChart'), {
@@ -162,15 +175,22 @@
         }
         });
 
-        // Top 10 Chart
-        const sortedData = Object.entries(psData).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        // Flatten the psData structure into a single array of [psNumber, ideasCount]
+        const flattenedData = Object.entries(psData).flatMap(([category, psEntries]) =>
+            Object.entries(psEntries).map(([psNumber, ideasCount]) => [psNumber, ideasCount])
+        );
+
+        // Sort the flattened data by ideasCount (descending) and take the top 10
+        const sortedData = flattenedData.sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+        // Create the chart
         new Chart(document.getElementById('top10Chart'), {
             type: 'bar',
             data: {
-                labels: sortedData.map(item => item[0]),
+                labels: sortedData.map(item => item[0]), // PS numbers
                 datasets: [{
                     label: 'Submissions',
-                    data: sortedData.map(item => item[1]),
+                    data: sortedData.map(item => item[1]), // Submissions count
                     backgroundColor: 'rgba(153, 102, 255, 0.6)',
                     borderColor: 'rgba(153, 102, 255, 1)',
                     borderWidth: 1
@@ -195,9 +215,10 @@
             }
         });
 
-        // Category Pie Chart (simulated data)
-        const categories = ['Software', 'Hardware', 'AI/ML', 'IoT', 'Blockchain', 'Other'];
-        const categoryData = categories.map(() => Math.floor(Math.random() * 100) + 1);
+
+        // Category Pie Chart
+        const categories = ['Hardware', 'Software'];
+        const categoryData = [Object.keys(psData.Hardware).length, Object.keys(psData.Software).length];
         new Chart(document.getElementById('categoryPieChart'), {
             type: 'pie',
             data: {
@@ -206,11 +227,7 @@
                     data: categoryData,
                     backgroundColor: [
                         'rgba(255, 99, 132, 0.8)',
-                        'rgba(54, 162, 235, 0.8)',
-                        'rgba(255, 206, 86, 0.8)',
-                        'rgba(75, 192, 192, 0.8)',
-                        'rgba(153, 102, 255, 0.8)',
-                        'rgba(255, 159, 64, 0.8)'
+                        'rgba(54, 162, 235, 0.8)'
                     ]
                 }]
             },
@@ -228,55 +245,71 @@
             }
         });
 
-        // Trend Line Chart (simulated data)
-        const trendData = Array.from({ length: 30 }, (_, i) => ({
-            x: moment().subtract(29 - i, 'days').format('YYYY-MM-DD'),
-            y: Math.floor(Math.random() * 100) + 1
-        }));
 
-        new Chart(document.getElementById('trendLineChart'), {
-            type: 'line',
+        // Hardware Bar Chart
+        new Chart(document.getElementById('hardwareBarChart'), {
+            type: 'bar',
             data: {
+                labels: hardwareData.map(item => item[0]),
                 datasets: [{
-                    label: 'Daily Submissions',
-                    data: trendData,
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
+                    label: 'Submissions',
+                    data: hardwareData.map(item => item[1]),
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
                 }]
             },
             options: {
                 scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'day'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Date'
-                        }
-                    },
                     y: {
+                        beginAtZero: true,
                         title: {
                             display: true,
                             text: 'Number of Submissions'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Problem Statement Number'
                         }
                     }
                 }
             }
         });
 
-        // Populate Latest PS Table
-        const latestPSTable = document.getElementById('latestPSTable');
-        Object.entries(psData).slice(-10).forEach(([ps, count]) => {
-            const row = latestPSTable.insertRow();
-            const cellPS = row.insertCell(0);
-            const cellCount = row.insertCell(1);
-            cellPS.textContent = ps;
-            cellCount.textContent = count;
+        // Software Bar Chart
+        new Chart(document.getElementById('softwareBarChart'), {
+            type: 'bar',
+            data: {
+                labels: softwareData.map(item => item[0]),
+                datasets: [{
+                    label: 'Submissions',
+                    data: softwareData.map(item => item[1]),
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Submissions'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Problem Statement Number'
+                        }
+                    }
+                }
+            }
         });
 
-        // Add event listener for Enter key
         document.getElementById('psSearch').addEventListener('keypress', function (event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
