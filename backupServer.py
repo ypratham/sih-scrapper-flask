@@ -24,40 +24,67 @@ def scrape_website():
     rows = table.find('tbody').find_all('tr')
 
     ps_data = {}
+    ps_category_data = {'hardware': [], 'software': []}
+
     for row in rows:
         try:
             cells = [td for td in row.find_all('td', recursive=False)]
 
-            # print(cells)
-
             if len(cells) >= 6:
-                ps_category = cells[3].text.strip()
+                ps_category = cells[3].text.strip().lower()
                 ps_number = cells[4].text.strip()
                 ideas_count = int(cells[5].text.strip())
-                ps_data[ps_number] = ideas_count
+
+                ps_data[ps_number] = {
+                    'category': ps_category,
+                    'ideas_count': ideas_count
+                }
+
+                # Collect data for each category
+                if ps_category in ps_category_data:
+                    ps_category_data[ps_category].append(ideas_count)
+
         except Exception as e:
             print(f"Error processing row: {e}")
 
-    return ps_data
+    return ps_data, ps_category_data
 
 
 @app.route('/dashboard')
 def dashboard():
-    ps_data = scrape_website()
-    total_submissions = sum(ps_data.values())
-    average_submissions = statistics.mean(ps_data.values()) if ps_data else 0
-    median_submissions = statistics.median(ps_data.values()) if ps_data else 0
-    max_submissions = max(ps_data.values()) if ps_data else 0
-    min_submissions = min(ps_data.values()) if ps_data else 0
+    ps_data, ps_category_data = scrape_website()
+    total_submissions = sum([data['ideas_count'] for data in ps_data.values()])
+    average_submissions = statistics.mean(
+        [data['ideas_count'] for data in ps_data.values()]) if ps_data else 0
+    median_submissions = statistics.median(
+        [data['ideas_count'] for data in ps_data.values()]) if ps_data else 0
+    max_submissions = max([data['ideas_count']
+                          for data in ps_data.values()]) if ps_data else 0
+    min_submissions = min([data['ideas_count']
+                          for data in ps_data.values()]) if ps_data else 0
 
     # Calculate distribution of submissions
     ranges = [0, 10, 50, 100, 500, float('inf')]
     distribution = [0] * (len(ranges) - 1)
-    for count in ps_data.values():
+    for data in ps_data.values():
+        count = data['ideas_count']
         for i, (lower, upper) in enumerate(zip(ranges, ranges[1:])):
             if lower <= count < upper:
                 distribution[i] += 1
                 break
+
+    # Category-specific analytics
+    category_analytics = {}
+    for category in ['hardware', 'software']:
+        counts = ps_category_data.get(category, [])
+        category_analytics[category] = {
+            'total_submissions': sum(counts),
+            'average_submissions': round(statistics.mean(counts), 2) if counts else 0,
+            'median_submissions': statistics.median(counts) if counts else 0,
+            'max_submissions': max(counts) if counts else 0,
+            'min_submissions': min(counts) if counts else 0,
+            'problem_statement_count': len(counts)
+        }
 
     return render_template('dashboardBackup.html',
                            ps_data=ps_data,
@@ -67,7 +94,8 @@ def dashboard():
                            max_submissions=max_submissions,
                            min_submissions=min_submissions,
                            problem_statement_count=len(ps_data),
-                           distribution=distribution)
+                           distribution=distribution,
+                           category_analytics=category_analytics)
 
 
 if __name__ == '__main__':

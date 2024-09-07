@@ -42,17 +42,6 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Submission Distribution</h2>
-                <canvas id="distributionChart"></canvas>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Submission Categories</h2>
-                <canvas id="categoryPieChart"></canvas>
-            </div>
-        </div>
-
         <div class="bg-white p-6 rounded-lg shadow mb-8">
             <h2 class="text-xl font-semibold mb-4">Search Problem Statement</h2>
             <div class="flex items-center">
@@ -70,6 +59,28 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Submission Distribution</h2>
+                <canvas id="distributionChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Top 10 Problem Statements</h2>
+                <canvas id="top10Chart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Submission Categories</h2>
+                <canvas id="categoryPieChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Submission Trend</h2>
+                <canvas id="trendLineChart"></canvas>
+            </div>
+        </div>
+
         <div class="bg-white p-6 rounded-lg shadow">
             <h2 class="text-xl font-semibold mb-4">Latest Problem Statements</h2>
             <div class="overflow-x-auto">
@@ -77,19 +88,11 @@
                     <thead>
                         <tr class="bg-gray-200">
                             <th class="px-4 py-2">PS Number</th>
-                            <th class="px-4 py-2">Category</th>
                             <th class="px-4 py-2">Submissions</th>
                         </tr>
                     </thead>
                     <tbody id="latestPSTable">
                         <!-- Table rows will be populated by JavaScript -->
-                        {% for ps_number, data in ps_data.items() %}
-                        <tr>
-                            <td class="px-4 py-2">{{ ps_number }}</td>
-                            <td class="px-4 py-2">{{ data['category'] }}</td>
-                            <td class="px-4 py-2">{{ data['ideas_count'] }}</td>
-                        </tr>
-                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -98,8 +101,6 @@
 
     <script>
         const psData = {{ ps_data | tojson }};
-        const distribution = {{ distribution | tojson }};
-        const categoryAnalytics = {{ category_analytics | tojson }};
 
         function searchPS() {
             const searchInput = document.getElementById('psSearch').value.trim().toUpperCase();
@@ -110,8 +111,8 @@
             const psPercentile = document.getElementById('psPercentile');
 
             if (psData.hasOwnProperty(searchInput)) {
-                const count = psData[searchInput].ideas_count;
-                const sortedCounts = Object.values(psData).map(data => data.ideas_count).sort((a, b) => b - a);
+                const count = psData[searchInput];
+                const sortedCounts = Object.values(psData).sort((a, b) => b - a);
                 const rank = sortedCounts.indexOf(count) + 1;
                 const percentile = ((Object.keys(psData).length - rank) / Object.keys(psData).length * 100).toFixed(2);
 
@@ -136,9 +137,42 @@
                 labels: ['0-9', '10-49', '50-99', '100-499', '500+'],
                 datasets: [{
                     label: 'Number of Problem Statements',
-                    data: distribution,
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
+                    data: {{ distribution }},
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+            },
+            options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Problem Statements'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Submission Range'
+                    }
+                }
+            }
+        }
+        });
+
+        // Top 10 Chart
+        const sortedData = Object.entries(psData).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        new Chart(document.getElementById('top10Chart'), {
+            type: 'bar',
+            data: {
+                labels: sortedData.map(item => item[0]),
+                datasets: [{
+                    label: 'Submissions',
+                    data: sortedData.map(item => item[1]),
+                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
                     borderWidth: 1
                 }]
             },
@@ -148,26 +182,28 @@
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'Number of Problem Statements'
+                            text: 'Number of Submissions'
                         }
                     },
                     x: {
                         title: {
                             display: true,
-                            text: 'Submission Range'
+                            text: 'Problem Statement Number'
                         }
                     }
                 }
             }
         });
 
-        // Category Pie Chart
+        // Category Pie Chart (simulated data)
+        const categories = ['Software', 'Hardware', 'AI/ML', 'IoT', 'Blockchain', 'Other'];
+        const categoryData = categories.map(() => Math.floor(Math.random() * 100) + 1);
         new Chart(document.getElementById('categoryPieChart'), {
             type: 'pie',
             data: {
-                labels: Object.keys(categoryAnalytics),
+                labels: categories,
                 datasets: [{
-                    data: Object.values(categoryAnalytics).map(cat => cat.total_submissions),
+                    data: categoryData,
                     backgroundColor: [
                         'rgba(255, 99, 132, 0.8)',
                         'rgba(54, 162, 235, 0.8)',
@@ -189,6 +225,62 @@
                         text: 'Problem Statement Categories'
                     }
                 }
+            }
+        });
+
+        // Trend Line Chart (simulated data)
+        const trendData = Array.from({ length: 30 }, (_, i) => ({
+            x: moment().subtract(29 - i, 'days').format('YYYY-MM-DD'),
+            y: Math.floor(Math.random() * 100) + 1
+        }));
+
+        new Chart(document.getElementById('trendLineChart'), {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Daily Submissions',
+                    data: trendData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Number of Submissions'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Populate Latest PS Table
+        const latestPSTable = document.getElementById('latestPSTable');
+        Object.entries(psData).slice(-10).forEach(([ps, count]) => {
+            const row = latestPSTable.insertRow();
+            const cellPS = row.insertCell(0);
+            const cellCount = row.insertCell(1);
+            cellPS.textContent = ps;
+            cellCount.textContent = count;
+        });
+
+        // Add event listener for Enter key
+        document.getElementById('psSearch').addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                searchPS();
             }
         });
     </script>
