@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 import requests
 from bs4 import BeautifulSoup
 from flask_caching import Cache
@@ -27,7 +27,11 @@ def scrape_website():
     for row in rows:
         try:
             cells = [td for td in row.find_all('td', recursive=False)]
+
+            # print(cells)
+
             if len(cells) >= 6:
+                ps_category = cells[3].text.strip()
                 ps_number = cells[4].text.strip()
                 ideas_count = int(cells[5].text.strip())
                 ps_data[ps_number] = ideas_count
@@ -37,30 +41,33 @@ def scrape_website():
     return ps_data
 
 
-@app.route('/api/ps-data', methods=['GET'])
-def get_ps_data():
+@app.route('/dashboard')
+def dashboard():
     ps_data = scrape_website()
     total_submissions = sum(ps_data.values())
     average_submissions = statistics.mean(ps_data.values()) if ps_data else 0
+    median_submissions = statistics.median(ps_data.values()) if ps_data else 0
+    max_submissions = max(ps_data.values()) if ps_data else 0
+    min_submissions = min(ps_data.values()) if ps_data else 0
 
-    return jsonify({
-        'ps_data': ps_data,
-        'total_submissions': total_submissions,
-        'average_submissions': round(average_submissions, 2),
-        'problem_statement_count': len(ps_data)
-    })
+    # Calculate distribution of submissions
+    ranges = [0, 10, 50, 100, 500, float('inf')]
+    distribution = [0] * (len(ranges) - 1)
+    for count in ps_data.values():
+        for i, (lower, upper) in enumerate(zip(ranges, ranges[1:])):
+            if lower <= count < upper:
+                distribution[i] += 1
+                break
 
-
-@app.route('/api/ps/<ps_number>', methods=['GET'])
-def get_specific_ps(ps_number):
-    ps_data = scrape_website()
-    if ps_number in ps_data:
-        return jsonify({
-            'ps_number': ps_number,
-            'ideas_count': ps_data[ps_number]
-        })
-    else:
-        return jsonify({'error': 'Problem Statement not found'}), 404
+    return render_template('dashboard.html',
+                           ps_data=ps_data,
+                           total_submissions=total_submissions,
+                           average_submissions=round(average_submissions, 2),
+                           median_submissions=median_submissions,
+                           max_submissions=max_submissions,
+                           min_submissions=min_submissions,
+                           problem_statement_count=len(ps_data),
+                           distribution=distribution)
 
 
 if __name__ == '__main__':

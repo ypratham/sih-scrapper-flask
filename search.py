@@ -29,15 +29,19 @@ for row in rows:
         # Only get the top-level <td> elements, excluding nested tables or modals
         cells = [td for td in row.find_all('td', recursive=False)]
 
+        # print(cells[3])
+
         if len(cells) >= 6:
+            ps_category = cells[3].text.strip()
             ps_number = cells[4].text.strip()
             ideas_count = cells[5].text.strip()
 
             # Append to the ps_data list
-            ps_data.append((ps_number, ideas_count))
+            ps_data.append((ps_number, ideas_count, ps_category))
 
             # Print the extracted data
-            print(f"PS Number: {ps_number}, Ideas Count: {ideas_count}")
+            print(f"PS Number: {ps_number}, Ideas Count: {
+                  ideas_count} PS Category: {ps_category}")
     except Exception as e:
         print(f"Error processing row: {e}")
 
