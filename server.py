@@ -114,7 +114,3 @@ def dashboard():
                            hardware_min=hardware_min,
                            software_min=software_min
                            )
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
