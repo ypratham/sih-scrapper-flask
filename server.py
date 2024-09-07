@@ -68,7 +68,3 @@ def dashboard():
                            min_submissions=min_submissions,
                            problem_statement_count=len(ps_data),
                            distribution=distribution)
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
