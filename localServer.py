@@ -41,13 +41,6 @@ def scrape_website():
     return ps_data
 
 
-
-@app.route('/hello')
-def dashboard():
-    return jsonify({
-        "message": "hello"
-    })
-
 @app.route('/')
 def dashboard():
     ps_data = scrape_website()
@@ -121,3 +114,7 @@ def dashboard():
                            hardware_min=hardware_min,
                            software_min=software_min
                            )
+
+if __name__ == '__main__':
+    app.run()
+
